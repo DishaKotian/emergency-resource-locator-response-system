@@ -1,0 +1,59 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+
+  auth-service:
+    build: ./backend/auth-service
+    ports:
+      - "5001:5001"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/auth_db
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongodb
+
+  emergency-service:
+    build: ./backend/emergency-service
+    ports:
+      - "5002:5002"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/emergency_db
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongodb
+
+  admin-service:
+    build: ./backend/admin-service
+    ports:
+      - "5003:5003"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/admin_db
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - EMERGENCY_SERVICE_URL=http://emergency-service:5002
+    depends_on:
+      - mongodb
+      - auth-service
+      - emergency-service
+
+  api-gateway:
+    build: ./backend/api-gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - EMERGENCY_SERVICE_URL=http://emergency-service:5002
+      - ADMIN_SERVICE_URL=http://admin-service:5003
+    depends_on:
+      - auth-service
+      - emergency-service
+      - admin-service
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
